@@ -16,24 +16,77 @@ services:
       ICECAST_HOSTNAME:        "95.165.172.153"
     networks:
       - solomoon
+    # healthcheck не даёт liquidsoap стартовать раньше, чем Icecast
+    # примет TCP-соединение — без этого liquidsoap получает "Connection refused"
+    # и уходит в retry storm.
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 64m
 
   liquidsoap:
     image: savonet/liquidsoap:v2.2.5
     container_name: solomoon-liquidsoap
     restart: unless-stopped
     depends_on:
-      - icecast
+      icecast:
+        # Ждём не просто старта контейнера, а реальной готовности Icecast.
+        condition: service_healthy
     volumes:
       - ./liquidsoap/radio.liq:/radio.liq:ro
       - ./music:/music:ro
       - liquidsoap-logs:/var/log/liquidsoap
     environment:
-      ICECAST_HOST: icecast
-      ICECAST_PORT: "8000"
+      ICECAST_HOST:            icecast
+      ICECAST_PORT:            "8000"
       ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
+      # Пароль, который radio-api передаёт ffmpeg → harbor.
+      # Liquidsoap проверяет его в auth-функции input.harbor.
+      HARBOR_PASSWORD:         ${HARBOR_PASSWORD}
     command: ["liquidsoap", "/radio.liq"]
     networks:
       - solomoon
+    deploy:
+      resources:
+        limits:
+          # Liquidsoap держит аудио-буферы в памяти: ~50 MB базово +
+          # буфер на трек (~5 MB на FLAC/WAV). 512 MB — безопасный потолок.
+          memory: 512m
+        reservations:
+          memory: 128m
+
+  radio-api:
+    build:
+      context: ./radio-api
+      dockerfile: Dockerfile
+    container_name: solomoon-radio-api
+    restart: unless-stopped
+    ports:
+      # WS-порт для DJ-деки. Открыт наружу — DJ подключается из браузера.
+      - "8080:8080"
+    environment:
+      PORT:             "8080"
+      DJ_TOKEN:         ${DJ_TOKEN}
+      HARBOR_PASSWORD:  ${HARBOR_PASSWORD}
+      LIQUIDSOAP_HOST:  liquidsoap
+      HARBOR_PORT:      "8005"
+    networks:
+      - solomoon
+    deploy:
+      resources:
+        limits:
+          # ffmpeg на один поток ~30–80 MB; Node.js ~50 MB.
+          memory: 256m
+        reservations:
+          memory: 64m
 
 volumes:
   icecast-logs:
