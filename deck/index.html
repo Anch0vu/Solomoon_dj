@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoloMoon's Club — DJ Console</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0B0E1A;
+  --surface:  #131726;
+  --surface2: #1C2235;
+  --border:   #252d42;
+  --cream:    #F0E6D2;
+  --dim:      #7a7060;
+  --peach:    #FFB17A;
+  --burgundy: #5C1E2E;
+  --lunar:    #A8C5E0;
+  --live:     #ff4455;
+  --r:        8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--cream);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  min-height: 100vh;
+  padding: 14px 16px;
+  user-select: none;
+}
+
+/* ── Header ── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  letter-spacing: .05em;
+}
+.logo em { color: var(--peach); font-style: normal; }
+.logo small {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  margin-left: 8px;
+  font-weight: 400;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: .1em;
+}
+.badge-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--dim);
+}
+.badge.live { color: var(--live); }
+.badge.live .badge-dot {
+  background: var(--live);
+  box-shadow: 0 0 6px var(--live);
+  animation: blink 1s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── Main grid: Deck A | Mixer | Deck B ── */
+.console {
+  display: grid;
+  grid-template-columns: 1fr 190px 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* ── Deck ── */
+.deck {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+}
+.deck-label {
+  font-size: 9px;
+  letter-spacing: .25em;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.drop-zone {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 16px 10px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--dim);
+  font-size: 11px;
+  transition: border-color .2s, color .2s;
+  margin-bottom: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.drop-zone:hover,
+.drop-zone.over { border-color: var(--peach); color: var(--peach); }
+.drop-zone input[type=file] { display: none; }
+
+.track-meta { margin-bottom: 10px; min-height: 30px; }
+.track-title {
+  color: var(--cream);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.track-artist { color: var(--lunar); font-size: 10px; margin-top: 2px; }
+
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.btn-play {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--peach);
+  color: var(--bg);
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: transform .1s, background .2s;
+}
+.btn-play:hover { transform: scale(1.06); }
+.btn-play:disabled {
+  background: var(--surface2);
+  color: var(--dim);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.time {
+  flex: 1;
+  text-align: right;
+  color: var(--dim);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress {
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--peach);
+  width: 0%;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dim);
+  font-size: 10px;
+  letter-spacing: .05em;
+}
+
+/* ── Sliders ── */
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background: var(--peach);
+  cursor: pointer;
+}
+input[type=range]::-moz-range-thumb {
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background: var(--peach);
+  cursor: pointer;
+  border: none;
+}
+
+/* ── Mixer panel ── */
+.mixer {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.mixer-label {
+  font-size: 9px;
+  letter-spacing: .25em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.xfader-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--dim);
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+.xfader-wrap { width: 100%; }
+#xfader::-webkit-slider-thumb { background: var(--cream); }
+#xfader::-moz-range-thumb     { background: var(--cream); }
+
+.btn {
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .06em;
+  transition: background .2s, transform .1s;
+  width: 100%;
+}
+.btn:active { transform: scale(.97); }
+
+.btn-automix {
+  background: var(--surface2);
+  color: var(--lunar);
+  border: 1px solid var(--lunar);
+}
+.btn-automix:hover,
+.btn-automix.mixing { background: var(--lunar); color: var(--bg); }
+
+.master-row { width: 100%; }
+
+/* ── Broadcast bar ── */
+.broadcast {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.bc-label {
+  font-size: 9px;
+  letter-spacing: .2em;
+  color: var(--dim);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 9px;
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 11px;
+  outline: none;
+}
+.input:focus { border-color: var(--peach); }
+.input-url   { flex: 1; min-width: 160px; }
+.input-token { width: 130px; }
+
+.btn-live {
+  background: var(--burgundy);
+  color: var(--cream);
+  border: 1px solid #7a2840;
+  flex-shrink: 0;
+  padding: 7px 18px;
+  font-size: 11px;
+}
+.btn-live:hover      { background: #7a2840; }
+.btn-live.streaming  { background: var(--live); border-color: var(--live); color: #fff; }
+
+.status { font-size: 10px; color: var(--dim); flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><em>Solo</em>Moon's Club <small>— DJ Console</small></div>
+  <div class="badge" id="badge"><div class="badge-dot"></div><span id="badgeText">OFFLINE</span></div>
+</header>
+
+<div class="console">
+
+  <!-- ── DECK A ── -->
+  <div class="deck">
+    <div class="deck-label">DECK A</div>
+    <div class="drop-zone" id="dropA" onclick="document.getElementById('fileA').click()">
+      <input type="file" id="fileA" accept="audio/*">
+      Drop track · Click to load
+    </div>
+    <div class="track-meta">
+      <div class="track-title" id="titleA">—</div>
+      <div class="track-artist" id="artistA"></div>
+    </div>
+    <div class="transport">
+      <button class="btn-play" id="playA" onclick="toggleDeck('A')" disabled>▶</button>
+      <div class="time" id="timeA">0:00 / 0:00</div>
+    </div>
+    <div class="progress" id="pbA"><div class="progress-fill" id="pfA"></div></div>
+    <div class="row">VOL <input type="range" id="volA" min="0" max="1.5" step="0.01" value="1"></div>
+  </div>
+
+  <!-- ── MIXER ── -->
+  <div class="mixer">
+    <div class="mixer-label">Mixer</div>
+
+    <div class="xfader-wrap">
+      <div class="xfader-labels"><span>A</span><span>B</span></div>
+      <input type="range" id="xfader" min="0" max="1" step="0.001" value="0.5" style="width:100%">
+    </div>
+
+    <button class="btn btn-automix" id="btnAuto" onclick="toggleAutoMix()">AUTO MIX →B</button>
+
+    <div class="master-row row">
+      MASTER
+      <input type="range" id="masterVol" min="0" max="1" step="0.01" value="0.85">
+    </div>
+  </div>
+
+  <!-- ── DECK B ── -->
+  <div class="deck">
+    <div class="deck-label">DECK B</div>
+    <div class="drop-zone" id="dropB" onclick="document.getElementById('fileB').click()">
+      <input type="file" id="fileB" accept="audio/*">
+      Drop track · Click to load
+    </div>
+    <div class="track-meta">
+      <div class="track-title" id="titleB">—</div>
+      <div class="track-artist" id="artistB"></div>
+    </div>
+    <div class="transport">
+      <button class="btn-play" id="playB" onclick="toggleDeck('B')" disabled>▶</button>
+      <div class="time" id="timeB">0:00 / 0:00</div>
+    </div>
+    <div class="progress" id="pbB"><div class="progress-fill" id="pfB"></div></div>
+    <div class="row">VOL <input type="range" id="volB" min="0" max="1.5" step="0.01" value="1"></div>
+  </div>
+
+</div>
+
+<!-- ── BROADCAST ── -->
+<div class="broadcast">
+  <div class="bc-label">Stream</div>
+  <input class="input input-url"   id="wsUrl"   type="text"     placeholder="ws://95.165.172.153:8080/dj">
+  <input class="input input-token" id="djToken" type="password" placeholder="DJ Token">
+  <button class="btn btn-live" id="btnLive" onclick="toggleLive()">GO LIVE</button>
+  <span class="status" id="statusText">Not connected</span>
+</div>
+
+<script>
+'use strict'
+
+// ─── Audio context (created lazily on first user gesture) ────────────────────
+let ctx        = null
+let masterGain = null
+let streamDest = null   // MediaStreamDestination → MediaRecorder
+
+function ensureCtx () {
+  if (ctx) return
+  ctx        = new AudioContext()
+  masterGain = ctx.createGain()
+  streamDest = ctx.createMediaStreamDestination()
+  masterGain.connect(ctx.destination)  // local monitor
+  masterGain.connect(streamDest)       // capture for streaming
+  masterGain.gain.value = +document.getElementById('masterVol').value
+  document.getElementById('masterVol').addEventListener('input', e => {
+    masterGain.gain.setTargetAtTime(+e.target.value, ctx.currentTime, 0.02)
+  })
+}
+
+// ─── Deck state ──────────────────────────────────────────────────────────────
+const D = {
+  A: { buf:null, src:null, volNode:null, gainNode:null,
+       startAt:0, offsetAt:0, playing:false, duration:0 },
+  B: { buf:null, src:null, volNode:null, gainNode:null,
+       startAt:0, offsetAt:0, playing:false, duration:0 },
+}
+
+function buildDeckNodes (id) {
+  const d = D[id]
+  if (d.volNode)  d.volNode.disconnect()
+  if (d.gainNode) d.gainNode.disconnect()
+  d.volNode  = ctx.createGain()
+  d.gainNode = ctx.createGain()
+  d.volNode.connect(d.gainNode)
+  d.gainNode.connect(masterGain)
+  // restore volume knob
+  const volEl = document.getElementById('vol' + id)
+  d.volNode.gain.value = +volEl.value
+  volEl.oninput = e => d.volNode.gain.setTargetAtTime(+e.target.value, ctx.currentTime, 0.02)
+  // apply current crossfader position
+  applyCrossfader(+document.getElementById('xfader').value)
+}
+
+// ─── Load file ────────────────────────────────────────────────────────────────
+async function loadFile (id, file) {
+  ensureCtx()
+  if (ctx.state === 'suspended') await ctx.resume()
+
+  const d    = D[id]
+  const ab   = await file.arrayBuffer()
+  d.buf      = await ctx.decodeAudioData(ab)
+  d.duration = d.buf.duration
+  d.offsetAt = 0
+  d.playing  = false
+  if (d.src) { try { d.src.stop() } catch {} ; d.src = null }
+
+  buildDeckNodes(id)
+
+  const name = file.name.replace(/\.[^.]+$/, '')
+  document.getElementById('title'  + id).textContent = name
+  document.getElementById('artist' + id).textContent = ''
+  document.getElementById('play'   + id).disabled    = false
+  document.getElementById('drop'   + id).textContent = name
+  updateTime(id, 0)
+}
+
+// drag&drop + file input
+;['A','B'].forEach(id => {
+  const fileEl = document.getElementById('file' + id)
+  const dropEl = document.getElementById('drop' + id)
+
+  fileEl.addEventListener('change', e => { if (e.target.files[0]) loadFile(id, e.target.files[0]) })
+
+  dropEl.addEventListener('dragover',  e => { e.preventDefault(); dropEl.classList.add('over') })
+  dropEl.addEventListener('dragleave', ()  => dropEl.classList.remove('over'))
+  dropEl.addEventListener('drop',      e  => {
+    e.preventDefault()
+    dropEl.classList.remove('over')
+    if (e.dataTransfer.files[0]) loadFile(id, e.dataTransfer.files[0])
+  })
+})
+
+// ─── Transport ────────────────────────────────────────────────────────────────
+function toggleDeck (id) {
+  const d = D[id]
+  if (!d.buf) return
+  ensureCtx()
+
+  if (d.playing) {
+    d.offsetAt = (ctx.currentTime - d.startAt) % d.duration
+    try { d.src.stop() } catch {}
+    d.src      = null
+    d.playing  = false
+    document.getElementById('play' + id).textContent = '▶'
+  } else {
+    if (d.src) { try { d.src.stop() } catch {} }
+    d.src        = ctx.createBufferSource()
+    d.src.buffer = d.buf
+    d.src.connect(d.volNode)
+    d.src.start(0, d.offsetAt)
+    d.startAt  = ctx.currentTime - d.offsetAt
+    d.playing  = true
+    document.getElementById('play' + id).textContent = '⏸'
+    d.src.onended = () => {
+      if (d.playing) {
+        d.playing  = false
+        d.offsetAt = 0
+        document.getElementById('play' + id).textContent = '▶'
+      }
+    }
+  }
+}
+
+// ─── Crossfader — equal-power curve ─────────────────────────────────────────
+// x = 0 → full A, x = 1 → full B
+// gainA = cos(x · π/2),  gainB = sin(x · π/2)
+function applyCrossfader (x) {
+  const now   = ctx?.currentTime ?? 0
+  const angle = x * Math.PI / 2
+  if (D.A.gainNode) D.A.gainNode.gain.setTargetAtTime(Math.cos(angle), now, 0.02)
+  if (D.B.gainNode) D.B.gainNode.gain.setTargetAtTime(Math.sin(angle), now, 0.02)
+}
+
+document.getElementById('xfader').addEventListener('input', e => {
+  if (!ctx) return
+  applyCrossfader(+e.target.value)
+})
+
+// ─── Auto Mix ─────────────────────────────────────────────────────────────────
+// Schedules an equal-power crossfade from current position → full B
+// over AUTO_MIX_SEC seconds using Web Audio parameter automation.
+const AUTO_MIX_SEC = 12
+let autoRafId      = null
+
+function toggleAutoMix () {
+  if (autoRafId) {
+    cancelAnimationFrame(autoRafId)
+    autoRafId = null
+    setAutoBtn(false)
+    return
+  }
+  if (!ctx || !D.A.gainNode || !D.B.gainNode) return
+
+  const xEl  = document.getElementById('xfader')
+  const x0   = +xEl.value
+  const t0   = ctx.currentTime
+  const tend = t0 + AUTO_MIX_SEC
+  const N    = 64   // number of scheduled waypoints
+
+  // Pre-schedule the entire fade on the audio thread (glitch-free).
+  D.A.gainNode.gain.cancelScheduledValues(t0)
+  D.B.gainNode.gain.cancelScheduledValues(t0)
+  for (let i = 0; i <= N; i++) {
+    const t     = t0 + (i / N) * AUTO_MIX_SEC
+    const x     = x0 + (1 - x0) * (i / N)
+    const angle = x * Math.PI / 2
+    D.A.gainNode.gain.setValueAtTime(Math.cos(angle), t)
+    D.B.gainNode.gain.setValueAtTime(Math.sin(angle), t)
+  }
+
+  setAutoBtn(true)
+
+  function tick () {
+    const now  = ctx.currentTime
+    const prog = Math.min(1, (now - t0) / AUTO_MIX_SEC)
+    xEl.value  = x0 + (1 - x0) * prog
+    if (now < tend) {
+      autoRafId = requestAnimationFrame(tick)
+    } else {
+      xEl.value = '1'
+      autoRafId = null
+      setAutoBtn(false)
+    }
+  }
+  autoRafId = requestAnimationFrame(tick)
+}
+
+function setAutoBtn (on) {
+  const b = document.getElementById('btnAuto')
+  b.classList.toggle('mixing', on)
+  b.textContent = on ? 'MIXING…' : 'AUTO MIX →B'
+}
+
+// ─── Time display ─────────────────────────────────────────────────────────────
+function fmt (s) {
+  return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0')
+}
+function updateTime (id, cur) {
+  const d   = D[id]
+  const dur = d.duration || 0
+  document.getElementById('time' + id).textContent = fmt(cur) + ' / ' + fmt(dur)
+  document.getElementById('pf'   + id).style.width = (dur ? cur / dur * 100 : 0) + '%'
+}
+
+// Animation loop — updates progress bars at ~60 fps
+;(function rafLoop () {
+  requestAnimationFrame(rafLoop)
+  if (!ctx) return
+  ;['A','B'].forEach(id => {
+    const d = D[id]
+    if (d.playing) updateTime(id, Math.min(ctx.currentTime - d.startAt, d.duration))
+  })
+})()
+
+// ─── WebSocket streaming ──────────────────────────────────────────────────────
+// browser  →  WebM/Opus (MediaRecorder, 100ms chunks)
+//          →  WebSocket  →  radio-api  →  ffmpeg  →  Liquidsoap harbor
+let ws       = null
+let recorder = null
+let live     = false
+
+async function toggleLive () {
+  live ? stopLive() : await startLive()
+}
+
+async function startLive () {
+  ensureCtx()
+  if (ctx.state === 'suspended') await ctx.resume()
+
+  const url   = document.getElementById('wsUrl').value.trim()
+  const token = document.getElementById('djToken').value.trim()
+  if (!url)   { setStatus('Enter WebSocket URL');  return }
+  if (!token) { setStatus('Enter DJ token');       return }
+
+  const wsUrl = url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token)
+  setStatus('Connecting…')
+
+  ws = new WebSocket(wsUrl)
+  ws.binaryType = 'arraybuffer'
+
+  ws.onopen = () => {
+    setStatus('Connected — starting stream…')
+    // Small delay so ffmpeg can initialise and connect to harbor.
+    setTimeout(startRecorder, 500)
+  }
+
+  ws.onclose = e => {
+    stopRecorder()
+    setLive(false)
+    setStatus(e.wasClean ? 'Disconnected' : `Connection lost (${e.code})`)
+    ws = null
+  }
+
+  ws.onerror = () => setStatus('WebSocket error')
+}
+
+function startRecorder () {
+  // Pick the best supported MIME type.
+  const mimeType =
+    ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus']
+      .find(t => MediaRecorder.isTypeSupported(t)) ?? ''
+
+  recorder = new MediaRecorder(streamDest.stream, {
+    mimeType,
+    audioBitsPerSecond: 256_000,
+  })
+
+  recorder.ondataavailable = e => {
+    if (e.data.size > 0 && ws?.readyState === WebSocket.OPEN) {
+      ws.send(e.data)
+    }
+  }
+
+  recorder.start(100)   // 100 ms chunks → ~40–80 ms latency in the pipeline
+  setLive(true)
+  setStatus('● Streaming')
+}
+
+function stopRecorder () {
+  if (recorder?.state !== 'inactive') recorder?.stop()
+  recorder = null
+}
+
+function stopLive () {
+  stopRecorder()
+  ws?.close(1000, 'DJ stopped')
+  ws = null
+  setLive(false)
+  setStatus('Stopped')
+}
+
+function setLive (on) {
+  live = on
+  document.getElementById('badge').className   = 'badge' + (on ? ' live' : '')
+  document.getElementById('badgeText').textContent = on ? 'LIVE' : 'OFFLINE'
+  const b = document.getElementById('btnLive')
+  b.className   = 'btn btn-live' + (on ? ' streaming' : '')
+  b.textContent = on ? 'STOP' : 'GO LIVE'
+}
+
+function setStatus (msg) {
+  document.getElementById('statusText').textContent = msg
+}
+</script>
+</body>
+</html>

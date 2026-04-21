@@ -1,14 +1,12 @@
 #!/usr/bin/liquidsoap
 #
-# SoloMoon's Club — фаза 1: 24/7 fallback playlist
+# SoloMoon's Club — Phase 1 + 3: 24/7 playlist + Live DJ via harbor
 # Liquidsoap 2.2.x
 #
-# Что делает:
-#   1. Берёт всё из /music/ (рекурсивно), shuffle, бесконечная ротация.
-#   2. Кроссфейдит треки на 3 секунды.
-#   3. Публикует в Icecast как /stream.mp3 @ 320 kbps.
-#   4. Низкая латенси: маленькие буферы.
-#   5. ICY metadata = "Artist - Title" из тегов файла.
+# Поток данных:
+#   browser (Web Audio API) → MediaRecorder → WebSocket
+#   → radio-api → ffmpeg → input.harbor:8005
+#   → fallback([live, playlist]) → output.icecast /stream.mp3
 
 # ============== settings ==============
 settings.log.level.set(3)
@@ -17,6 +15,18 @@ settings.server.telnet.set(true)
 # Bind only to loopback — telnet must not be reachable from other containers.
 settings.server.telnet.bind_addr.set("127.0.0.1")
 settings.server.telnet.port.set(1234)
+
+# ============== live DJ input (harbor) ==============
+# Liquidsoap слушает на :8005, ждёт Icecast-source-protocol подключения
+# от ffmpeg (через radio-api). Как только источник подключается —
+# harbor становится доступен и вытесняет плейлист через fallback ниже.
+live = input.harbor(
+  id="live",
+  port=8005,
+  auth=fun(login, password) ->
+    password == environment.get("HARBOR_PASSWORD"),
+  "/live"
+)
 
 # ============== playlist source ==============
 # reload каждые 30 минут — успеешь дозалить треки rsync'ом
@@ -33,9 +43,9 @@ playlist_source = playlist(
 silence = blank()
 safe_source = fallback(track_sensitive=false, [playlist_source, silence])
 
-# ============== mixing ==============
-# Кроссфейд 3 секунды между треками (low latency, не блокирует поток)
-radio = crossfade(
+# Кроссфейд применяем ТОЛЬКО к плейлисту — DJ сам микширует в браузере,
+# normalize тоже только на плейлист (не мешает задуманным фейдам DJ-а).
+playlist_mixed = crossfade(
   duration=3.0,
   fade_in=2.0,
   fade_out=2.0,
@@ -43,8 +53,16 @@ radio = crossfade(
   safe_source
 )
 
-# Лёгкая нормализация (быстрая, не как ReplayGain)
-radio = normalize(target=-14.0, gain_min=-6.0, gain_max=6.0, radio)
+playlist_normalized = normalize(
+  target=-14.0,
+  gain_min=-6.0,
+  gain_max=6.0,
+  playlist_mixed
+)
+
+# ============== final source ==============
+# live (harbor) имеет приоритет; как только DJ выходит — возвращается плейлист.
+radio = fallback(track_sensitive=false, [live, playlist_normalized])
 
 # ============== Icecast output ==============
 output.icecast(
@@ -60,7 +78,6 @@ output.icecast(
   url="http://95.165.172.153:8000/",
   public=false,
   encoding="UTF-8",
-  # low-latency настройки
   chunked=true,
   send_icy_metadata=true,
   # max=5.0 ограничивает буфер 5-ю секундами — без max буфер растёт неограниченно
