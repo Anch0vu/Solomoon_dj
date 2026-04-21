@@ -41,8 +41,10 @@
         <bitrate>320</bitrate>
         <type>audio/mpeg</type>
         <public>0</public>
-        <fallback-mount></fallback-mount>
-        <fallback-override>1</fallback-override>
+        <!-- fallback-mount не задан: нет резервного маунта, переключаться некуда.
+             fallback-override=1 без fallback-mount разрывает соединения клиентов
+             вместо того чтобы держать их — поэтому оба тега убраны. -->
+        <fallback-override>0</fallback-override>
     </mount>
 
     <fileserve>1</fileserve>

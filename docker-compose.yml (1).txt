@@ -16,13 +16,30 @@ services:
       ICECAST_HOSTNAME:        "95.165.172.153"
     networks:
       - solomoon
+    # healthcheck не даёт liquidsoap стартовать раньше, чем Icecast
+    # примет TCP-соединение — без этого liquidsoap получает "Connection refused"
+    # и уходит в retry storm.
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+        reservations:
+          memory: 64m
 
   liquidsoap:
     image: savonet/liquidsoap:v2.2.5
     container_name: solomoon-liquidsoap
     restart: unless-stopped
     depends_on:
-      - icecast
+      icecast:
+        # Ждём не просто старта контейнера, а реальной готовности Icecast.
+        condition: service_healthy
     volumes:
       - ./liquidsoap/radio.liq:/radio.liq:ro
       - ./music:/music:ro
@@ -34,6 +51,14 @@ services:
     command: ["liquidsoap", "/radio.liq"]
     networks:
       - solomoon
+    deploy:
+      resources:
+        limits:
+          # Liquidsoap держит аудио-буферы в памяти: ~50 MB базово +
+          # буфер на трек (~5 MB на FLAC/WAV). 512 MB — безопасный потолок.
+          memory: 512m
+        reservations:
+          memory: 128m
 
 volumes:
   icecast-logs:

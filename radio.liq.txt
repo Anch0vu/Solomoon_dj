@@ -14,7 +14,8 @@
 settings.log.level.set(3)
 settings.log.stdout.set(true)
 settings.server.telnet.set(true)
-settings.server.telnet.bind_addr.set("0.0.0.0")
+# Bind only to loopback — telnet must not be reachable from other containers.
+settings.server.telnet.bind_addr.set("127.0.0.1")
 settings.server.telnet.port.set(1234)
 
 # ============== playlist source ==============
@@ -27,8 +28,9 @@ playlist_source = playlist(
   "/music"
 )
 
-# Если папка пустая — сухой sine 440 Hz, чтобы liquidsoap не падал
-silence = sine(amplitude=0.0, duration=10.0)
+# Если папка пустая — бесконечная тишина, чтобы liquidsoap не падал.
+# blank() — единственный бесконечный молчащий источник; sine с duration= конечен.
+silence = blank()
 safe_source = fallback(track_sensitive=false, [playlist_source, silence])
 
 # ============== mixing ==============
@@ -60,8 +62,10 @@ output.icecast(
   encoding="UTF-8",
   # low-latency настройки
   chunked=true,
-  send_icy_metadata="true",
-  buffer(buffer=0.2, radio)
+  send_icy_metadata=true,
+  # max=5.0 ограничивает буфер 5-ю секундами — без max буфер растёт неограниченно
+  # если Icecast потребляет медленнее, чем Liquidsoap производит (memory leak).
+  buffer(buffer=0.2, max=5.0, radio)
 )
 
 log("=== SoloMoon's Club is on air ===")
