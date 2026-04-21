@@ -1,0 +1,44 @@
+services:
+  icecast:
+    image: libretime/icecast:2.4.4
+    container_name: solomoon-icecast
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./icecast/icecast.xml:/etc/icecast2/icecast.xml:ro
+      - icecast-logs:/var/log/icecast2
+    environment:
+      ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
+      ICECAST_ADMIN_PASSWORD:  ${ICECAST_ADMIN_PASSWORD}
+      ICECAST_RELAY_PASSWORD:  ${ICECAST_RELAY_PASSWORD}
+      ICECAST_PASSWORD:        ${ICECAST_LISTENER_PASSWORD:-}
+      ICECAST_HOSTNAME:        "95.165.172.153"
+    networks:
+      - solomoon
+
+  liquidsoap:
+    image: savonet/liquidsoap:v2.2.5
+    container_name: solomoon-liquidsoap
+    restart: unless-stopped
+    depends_on:
+      - icecast
+    volumes:
+      - ./liquidsoap/radio.liq:/radio.liq:ro
+      - ./music:/music:ro
+      - liquidsoap-logs:/var/log/liquidsoap
+    environment:
+      ICECAST_HOST: icecast
+      ICECAST_PORT: "8000"
+      ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
+    command: ["liquidsoap", "/radio.liq"]
+    networks:
+      - solomoon
+
+volumes:
+  icecast-logs:
+  liquidsoap-logs:
+
+networks:
+  solomoon:
+    driver: bridge

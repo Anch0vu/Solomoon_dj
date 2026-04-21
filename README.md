@@ -65,6 +65,10 @@ docker compose logs -f
 
 Должно появиться `=== SoloMoon's Club is on air ===` в логах liquidsoap.
 
+> Если `docker compose up -d` падает с `solomoon-icecast ... unhealthy`,
+> почти всегда причина — не заполнены `ICECAST_ADMIN_PASSWORD` и
+> `ICECAST_RELAY_PASSWORD` в `.env`, или не выполнен `./scripts/configure.sh`.
+
 ## 5. Проверка
 
 ```bash
@@ -121,6 +125,10 @@ docker compose restart liquidsoap
 **Icecast не отдаёт стрим:**
 - `docker compose logs icecast` — ищи `Connection refused` или ошибки auth.
 - Проверь, что пароли в `icecast.xml` совпадают с `.env`.
+- Убедись, что в `.env` есть **все 3 пароля**:
+  - `ICECAST_SOURCE_PASSWORD`
+  - `ICECAST_ADMIN_PASSWORD`
+  - `ICECAST_RELAY_PASSWORD`
 
 **Латенси > 5 сек:**
 - Проверь, что в icecast.xml стоит `<burst-size>0</burst-size>`.

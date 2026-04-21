@@ -2,7 +2,7 @@
 # Подставляет пароли из .env в icecast.xml
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 if [ ! -f .env ]; then
   echo "ERROR: .env не найден. Скопируй .env.example → .env и поменяй пароли"
