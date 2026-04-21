@@ -1,0 +1,67 @@
+#!/usr/bin/liquidsoap
+#
+# SoloMoon's Club — фаза 1: 24/7 fallback playlist
+# Liquidsoap 2.2.x
+#
+# Что делает:
+#   1. Берёт всё из /music/ (рекурсивно), shuffle, бесконечная ротация.
+#   2. Кроссфейдит треки на 3 секунды.
+#   3. Публикует в Icecast как /stream.mp3 @ 320 kbps.
+#   4. Низкая латенси: маленькие буферы.
+#   5. ICY metadata = "Artist - Title" из тегов файла.
+
+# ============== settings ==============
+settings.log.level.set(3)
+settings.log.stdout.set(true)
+settings.server.telnet.set(true)
+settings.server.telnet.bind_addr.set("0.0.0.0")
+settings.server.telnet.port.set(1234)
+
+# ============== playlist source ==============
+# reload каждые 30 минут — успеешь дозалить треки rsync'ом
+playlist_source = playlist(
+  id="fallback",
+  mode="randomize",
+  reload=1800,
+  reload_mode="rounds",
+  "/music"
+)
+
+# Если папка пустая — сухой sine 440 Hz, чтобы liquidsoap не падал
+silence = sine(amplitude=0.0, duration=10.0)
+safe_source = fallback(track_sensitive=false, [playlist_source, silence])
+
+# ============== mixing ==============
+# Кроссфейд 3 секунды между треками (low latency, не блокирует поток)
+radio = crossfade(
+  duration=3.0,
+  fade_in=2.0,
+  fade_out=2.0,
+  smart=true,
+  safe_source
+)
+
+# Лёгкая нормализация (быстрая, не как ReplayGain)
+radio = normalize(target=-14.0, gain_min=-6.0, gain_max=6.0, radio)
+
+# ============== Icecast output ==============
+output.icecast(
+  %mp3(bitrate=320, samplerate=44100, stereo=true),
+  id="solomoon-stream",
+  host=environment.get("ICECAST_HOST"),
+  port=int_of_string(environment.get("ICECAST_PORT")),
+  password=environment.get("ICECAST_SOURCE_PASSWORD"),
+  mount="/stream.mp3",
+  name="SoloMoon's Club",
+  description="House · Deep House · EDM · R&B — Доброград",
+  genre="House Deep-House EDM R&B",
+  url="http://95.165.172.153:8000/",
+  public=false,
+  encoding="UTF-8",
+  # low-latency настройки
+  chunked=true,
+  send_icy_metadata="true",
+  buffer(buffer=0.2, radio)
+)
+
+log("=== SoloMoon's Club is on air ===")
