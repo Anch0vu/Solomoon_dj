@@ -1,3 +1,5 @@
+version: '3.9'
+
 services:
   icecast:
     image: libretime/icecast:2.4.4
@@ -13,12 +15,9 @@ services:
       ICECAST_ADMIN_PASSWORD:  ${ICECAST_ADMIN_PASSWORD}
       ICECAST_RELAY_PASSWORD:  ${ICECAST_RELAY_PASSWORD}
       ICECAST_PASSWORD:        ${ICECAST_LISTENER_PASSWORD:-}
-      ICECAST_HOSTNAME:        "95.165.172.153"
+      ICECAST_HOSTNAME:        ${SERVER_HOST:-localhost}
     networks:
       - solomoon
-    # healthcheck не даёт liquidsoap стартовать раньше, чем Icecast
-    # примет TCP-соединение — без этого liquidsoap получает "Connection refused"
-    # и уходит в retry storm.
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/"]
       interval: 5s
@@ -38,7 +37,6 @@ services:
     restart: unless-stopped
     depends_on:
       icecast:
-        # Ждём не просто старта контейнера, а реальной готовности Icecast.
         condition: service_healthy
     volumes:
       - ./liquidsoap/radio.liq:/radio.liq:ro
@@ -48,8 +46,6 @@ services:
       ICECAST_HOST:            icecast
       ICECAST_PORT:            "8000"
       ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
-      # Пароль, который radio-api передаёт ffmpeg → harbor.
-      # Liquidsoap проверяет его в auth-функции input.harbor.
       HARBOR_PASSWORD:         ${HARBOR_PASSWORD}
     command: ["liquidsoap", "/radio.liq"]
     networks:
@@ -57,8 +53,6 @@ services:
     deploy:
       resources:
         limits:
-          # Liquidsoap держит аудио-буферы в памяти: ~50 MB базово +
-          # буфер на трек (~5 MB на FLAC/WAV). 512 MB — безопасный потолок.
           memory: 512m
         reservations:
           memory: 128m
@@ -70,7 +64,6 @@ services:
     container_name: solomoon-radio-api
     restart: unless-stopped
     ports:
-      # WS-порт для DJ-деки. Открыт наружу — DJ подключается из браузера.
       - "8080:8080"
     environment:
       PORT:             "8080"
@@ -78,12 +71,12 @@ services:
       HARBOR_PASSWORD:  ${HARBOR_PASSWORD}
       LIQUIDSOAP_HOST:  liquidsoap
       HARBOR_PORT:      "8005"
+      NODE_ENV:         production
     networks:
       - solomoon
     deploy:
       resources:
         limits:
-          # ffmpeg на один поток ~30–80 MB; Node.js ~50 MB.
           memory: 256m
         reservations:
           memory: 64m
