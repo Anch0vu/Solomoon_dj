@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   icecast:
     image: libretime/icecast:2.4.4
