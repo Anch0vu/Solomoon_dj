@@ -60,7 +60,7 @@
         <errorlog>error.log</errorlog>
         <loglevel>3</loglevel>
         <logsize>10000</logsize>
-    </logging>
+    </logging>    
 
     <security>
         <chroot>0</chroot>
